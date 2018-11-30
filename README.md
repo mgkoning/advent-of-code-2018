@@ -1,2 +1,2 @@
 # advent-of-code-2018
-Solutions to the Advent of Code 2018 Edition
+My solutions to the Advent of Code 2018 Edition
