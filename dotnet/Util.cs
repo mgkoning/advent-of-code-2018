@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace AdventOfCode2018 {
   public static class Util {
-    static string _basePath = Path.Combine(FindHome(), "dotnet");
+    static string _basePath = Path.Combine(FindHome(), "dotnet", "inputs");
 
     static IEnumerable<DirectoryInfo> GetAncestors(FileInfo file) {
       DirectoryInfo directory = file.Directory;

@@ -38,7 +38,7 @@ namespace AdventOfCode2018 {
     }
 
     static string Ask(string question) {
-      Console.WriteLine(question);
+      Console.Write($"{question} ");
       return Console.ReadLine();
     }
   }
