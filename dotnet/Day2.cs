@@ -16,6 +16,20 @@ namespace AdventOfCode2018 {
         (from item in list.Skip(1) select (list.First(), item))
           .Concat(Pairs(list.Skip(1)));
 
+    public static IEnumerable<IEnumerable<T>> Combinations<T>(IEnumerable<T> list, int number) {
+      if(number < 1) {
+        return new []{ new T[0] };
+      }
+      if(!list.Any()) {
+        return new T[][]{ };
+      }
+      var first = list.First();
+      var rest = list.Skip(1);
+      return Combinations(rest, number-1).Select(comb => new[] {first}.Concat(comb))
+        .Concat(Combinations(rest, number));
+    }
+
+
     public async Task Solve() {
       bool hasCount(IEnumerable<IGrouping<char, char>> groupings, int target) =>
         groupings.Any(l => l.Count() == target);
