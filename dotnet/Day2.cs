@@ -38,9 +38,21 @@ namespace AdventOfCode2018 {
         select (p, c)
       );
       Console.WriteLine(common);
+
+      Console.WriteLine("Part 2 (faster, 'inspired'):");
+      var seen = new HashSet<(int, string)>();
+      foreach(var possible in boxIDs.SelectMany(boxID => TakeOneOut(boxID))) {
+        if(!seen.Add(possible)) {
+          System.Console.WriteLine(possible.Item2);
+          break;
+        }
+      }
     }
 
-    private string CommonPart(string one, string other) =>
+    IEnumerable<(int, string)> TakeOneOut(string boxID) =>
+      boxID.Select((_, index) => (index, boxID.Remove(index, 1)));
+
+    string CommonPart(string one, string other) =>
       new string(one.Where((letter, index) => other[index] == letter).ToArray());
   }
 }
