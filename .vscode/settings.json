@@ -1,4 +1,9 @@
 {
   "python.pythonPath": "C:\\Users\\Michiel\\AppData\\Local\\Programs\\Python\\Python37\\python.exe",
-  "python.linting.enabled": false
+  "python.linting.enabled": false,
+  "files.exclude": {
+    "**/bin": true,
+    "**/obj": true
+  },
+  "files.insertFinalNewline": true
 }
