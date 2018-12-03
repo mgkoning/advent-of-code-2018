@@ -18,20 +18,34 @@ namespace AdventOfCode2018 {
     static async Task<int> Main(string[] args) {
       try {
         var day = 0 < args.Length ? args[0] : Ask("Provide day number:");
-        if (int.TryParse(day, out var dayNum) && _runners.ContainsKey(dayNum)) {
-          var dayRunner = (IDay)Activator.CreateInstance(_runners[dayNum]);
-          ShowBanner(dayRunner.Banner);
-          await dayRunner.Solve();
-          return 0;
+        if (IsAllDays(day)) {
+          Console.WriteLine("Running all days, please be patient...");
+          foreach(var dayRunnerType in _runners.OrderBy(t => t.Key).Select(kv => kv.Value)) {
+            await RunDay(dayRunnerType);
+            Console.WriteLine();
+          }
+        } else if (int.TryParse(day, out var dayNum) && _runners.ContainsKey(dayNum)) {
+          await RunDay(_runners[dayNum]);
         } else {
-          System.Console.WriteLine("Invalid day specified.");
+          Console.WriteLine("Invalid day specified.");
           return 1;
         }
       } catch (Exception exception) {
-        System.Console.WriteLine("Unhandled exception!");
-        System.Console.WriteLine(exception.ToString());
+        Console.WriteLine("Unhandled exception!");
+        Console.WriteLine(exception.ToString());
         return -1;
       }
+      return 0;
+    }
+
+    static bool IsAllDays(string day) =>
+      StringComparer.OrdinalIgnoreCase.Compare(day, "all") == 0;
+    
+
+    static async Task RunDay(Type dayRunnerType) {
+      var dayRunner = (IDay)Activator.CreateInstance(dayRunnerType);
+      ShowBanner(dayRunner.Banner);
+      await dayRunner.Solve();
     }
 
     static void ShowBanner(string banner) {
