@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace AdventOfCode2018 {
+namespace AdventOfCode2018.Day01 {
   public class Day1: IDay {
 
     public string Banner => "Day 1: Chronal Calibration";

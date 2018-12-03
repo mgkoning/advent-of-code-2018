@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace AdventOfCode2018 {
+namespace AdventOfCode2018.Day02 {
   public class Day2 : IDay {
     public string Banner => "Day 2: Inventory Management System";
 

@@ -1,7 +1,7 @@
 using System.Threading.Tasks;
 using NUnit.Framework;
 
-namespace AdventOfCode2018.Tests {
+namespace AdventOfCode2018.Day01.Tests {
   public class Day1Tests {
 
     [Test]

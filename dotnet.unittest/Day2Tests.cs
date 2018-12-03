@@ -1,7 +1,7 @@
 using System.Linq;
 using NUnit.Framework;
 
-namespace AdventOfCode2018.Tests {
+namespace AdventOfCode2018.Day02.Tests {
   class Day2Tests {
     
     [Test]

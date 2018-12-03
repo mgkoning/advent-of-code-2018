@@ -16,15 +16,21 @@ namespace AdventOfCode2018 {
     ).ToDictionary(t => t.dayNum, t => t.type);
 
     static async Task<int> Main(string[] args) {
-      var day = 0 < args.Length ? args[0] : Ask("Provide day number:");
-      if (int.TryParse(day, out var dayNum) && _runners.ContainsKey(dayNum)) {
-        var dayRunner = (IDay)Activator.CreateInstance(_runners[dayNum]);
-        ShowBanner(dayRunner.Banner);
-        await dayRunner.Solve();
-        return 0;
-      } else {
-        System.Console.WriteLine("Invalid day specified.");
-        return 1;
+      try {
+        var day = 0 < args.Length ? args[0] : Ask("Provide day number:");
+        if (int.TryParse(day, out var dayNum) && _runners.ContainsKey(dayNum)) {
+          var dayRunner = (IDay)Activator.CreateInstance(_runners[dayNum]);
+          ShowBanner(dayRunner.Banner);
+          await dayRunner.Solve();
+          return 0;
+        } else {
+          System.Console.WriteLine("Invalid day specified.");
+          return 1;
+        }
+      } catch (Exception exception) {
+        System.Console.WriteLine("Unhandled exception!");
+        System.Console.WriteLine(exception.ToString());
+        return -1;
       }
     }
 
@@ -32,14 +38,24 @@ namespace AdventOfCode2018 {
       const int width = 80;
       var padding = (width - banner.Length) / 2;
       var bannerEdge = new string('*', width);
-      Console.WriteLine(bannerEdge);
-      Console.WriteLine($"*{banner.PadLeft(padding - 1 + banner.Length).PadRight(width - 2)}*");
-      Console.WriteLine(bannerEdge);
+      WriteWithColor(bannerEdge, ConsoleColor.DarkRed);
+      WriteWithColor($"*{banner.PadLeft(padding - 1 + banner.Length).PadRight(width - 2)}*", ConsoleColor.White);
+      WriteWithColor(bannerEdge, ConsoleColor.DarkGreen);
     }
 
     static string Ask(string question) {
       Console.Write($"{question} ");
       return Console.ReadLine();
+    }
+
+    static void WriteWithColor(string text, ConsoleColor color) {
+      var oldColor = Console.ForegroundColor;
+      try {
+        Console.ForegroundColor = color;
+        Console.WriteLine(text);
+      } finally {
+        Console.ForegroundColor = oldColor;
+      }
     }
   }
 }
