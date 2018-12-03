@@ -39,21 +39,23 @@ claimMap claims = foldl1 mergeClaims $ map makeMap claims
     makeMap = Map.fromList . (`zip` (repeat 1)). allCoords
     mergeClaims = merge preserveMissing preserveMissing (zipWithMatched (\k -> (+)))
 
-solve = do
+-- Previous (very inefficient) version:
+solveOld = do
   claims <- map parseLine <$> lines <$> readFile "input.txt"
-  {- Previous (very inefficient) version:
   let overlaps = fromList $ concat $ map overlap $ pairs claims
   putStrLn "Part 1:"
   putStrLn $ show $ length overlaps
-  -}
-  putStrLn "Part 1 revisited:"
-  let claimedCloth = claimMap claims
-  putStrLn $ show $ length $ Map.filter (\x -> 1 < x) claimedCloth
-
-  {- Previous version:
+  
   putStrLn "Part 2:"
   putStrLn $ claimId $ head $ filter (\c -> not $ any (`member` overlaps) (allCoords c)) claims
-  -}
+
+
+solve = do
+  claims <- map parseLine <$> lines <$> readFile "input.txt"
+  let claimedCloth = claimMap claims
+
+  putStrLn "Part 1 revisited:"
+  putStrLn $ show $ length $ Map.filter (\x -> 1 < x) claimedCloth
 
   putStrLn "Part 2 revisited:"
   putStrLn $ claimId $ head $ filter (\c -> all ((==1) . (claimedCloth !)) (allCoords c)) claims
