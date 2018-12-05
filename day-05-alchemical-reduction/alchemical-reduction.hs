@@ -31,23 +31,37 @@ solveOld = do
   Inspired by the advent of code subreddit solutions megathread
 -}  
 
-collapse :: [Char] -> [Char]
-collapse polymer = foldr reduceStep "" polymer
+collapseRight :: [Char] -> [Char]
+collapseRight polymer = foldr reduceStep "" polymer
   where reduceStep a (b:reduced)
           | a /= b && toUpper a == toUpper b = reduced
           | otherwise = (a:b:reduced)
         reduceStep remaining reduced = remaining : reduced
 
+collapseLeft :: [Char] -> [Char]
+collapseLeft polymer = reverse $ foldl reduceStep "" polymer
+  where reduceStep (b:reduced) a 
+          | a /= b && toUpper a == toUpper b = reduced
+          | otherwise = (a:b:reduced)
+        reduceStep reduced remaining = remaining : reduced
+
+
 optimalCollapse polymer = head $ sortOn length $ map collapseWithoutUnit ['a'..'z']
-  where collapseWithoutUnit unit = collapse $ filter (\c -> toUpper c /= toUpper unit) polymer
+  where collapseWithoutUnit unit = collapseRight $ filter (\c -> toUpper c /= toUpper unit) polymer
 
 solve = do
-  putStrLn "Part 1:"
   polymer <- readFile "input.txt"
-  let collapsed = collapse polymer
+  putStrLn "Part 1:"
+  let collapsed = collapseRight polymer
   putStrLn $ show $ length $ collapsed
+  putStrLn "Part 1 (L):"
+  let collapsedLeft = collapseLeft polymer
+  putStrLn $ show $ length $ collapsedLeft
   putStrLn "Part 2:"
   putStrLn $ show $ length $ optimalCollapse polymer
 
-        
+  {- It also seems possible to optimize the collapsed result from part 1: -}
+  putStrLn "Part 2 (alternate approach):"
+  putStrLn $ show $ length $ optimalCollapse collapsed
+
 testPolymer = "dabAcCaCBAcCcaDA"
