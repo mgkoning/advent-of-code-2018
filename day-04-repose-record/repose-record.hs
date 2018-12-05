@@ -1,66 +1,62 @@
-import Data.List (sort, group, sortOn, groupBy)
+import Data.List (sort, group, sortOn, sortBy)
+import Data.Ord (Down(..), comparing)
 import qualified Data.Text as T
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 
-data Event = OnDuty String | Asleep Int | Awake Int deriving (Show, Eq)
-
-data NoddedOff = NoddedOff { guard :: String, from :: Int, to :: Int } deriving Show
-
-parseLine line =
-  let
-    packedLine = T.pack line
-    (date:time:firstword:rest) = T.splitOn (T.pack " ") packedLine
-    minute = read $ T.unpack (T.dropEnd 1 $ T.drop 3 time)
-    event =
-      case () of _
-                  | firstword == (T.pack "Guard") -> OnDuty (T.unpack $ T.drop 1 $ head rest)
-                  | firstword == (T.pack "falls") -> Asleep minute
-                  | firstword == (T.pack "wakes") -> Awake minute
-  in event
-
-buildNodOffs events = buildNodOffs' events "unknown" 0 []
+buildNodOffs :: [String] -> [(Int, [Int])]
+buildNodOffs lines = buildNodOffs' lines 0 0 Map.empty
   where
-    buildNodOffs' [] _ _ nodOffs =  reverse nodOffs
-    buildNodOffs' (e:events) guardId fellAsleep nodOffs =
-      case e of
-        OnDuty g -> buildNodOffs' events g 0 nodOffs
-        Asleep from -> buildNodOffs' events guardId from nodOffs
-        Awake awokeAt -> buildNodOffs' events guardId 0 ((NoddedOff guardId fellAsleep awokeAt):nodOffs)
+    buildNodOffs' [] _ _ nodOffs = Map.toList nodOffs
+    buildNodOffs' (line:lines) guardId fellAsleep nodOffs =
+      let (firstword, newGuardId, minute) = getLineValues line
+      in if firstword == "Guard" then
+           buildNodOffs' lines newGuardId 0 nodOffs
+         else if firstword == "falls" then
+           buildNodOffs' lines guardId minute nodOffs
+         else if firstword == "wakes" then
+           buildNodOffs' lines guardId 0 $ Map.insertWith (++) guardId [fellAsleep..minute-1] nodOffs
+         else error ("Unknown event: " ++ line)
 
-timeAsleep nodOffs = foldl addNodOff Map.empty nodOffs
-  where addNodOff map nodOff = Map.insertWith (+) (guard nodOff) (to nodOff - from nodOff) map
+getLineValues :: String -> (String, Int, Int)
+getLineValues line = (firstword, newGuardId, minute)
+  where packedLine = T.pack line
+        (date:time:firstword':rest) = T.splitOn (T.pack " ") packedLine
+        minute = read $ T.unpack (T.dropEnd 1 $ T.drop 3 time)
+        newGuardId = read $ T.unpack $ T.drop 1 $ head rest
+        firstword = T.unpack firstword'
 
-getMinutes nodOff = [(from nodOff)..(to nodOff - 1)]
+sortDescendingOn :: Ord a => (b -> a) -> [b] -> [b]
+sortDescendingOn f = sortBy $ comparing (Down . f)
 
-determineMostAsleepAt = (\x -> (head x, length x)) . head . reverse . sortOn length . group . sort
+sortMostAsleepAt :: Ord a => [a] -> [[a]]
+sortMostAsleepAt = sortDescendingOn length . group . sort
 
-part1 nodOffs = (mostAsleep, mostAsleepAt)
-  where 
-    mostAsleep = Map.foldlWithKey (\curr guardId time -> if time > snd curr then (guardId, time) else curr) ("unknown", 0) $ timeAsleep nodOffs
-    guardId = fst mostAsleep
-    guardTimes = filter ((==guardId) . guard) nodOffs
-    minutesSleeping = concatMap getMinutes guardTimes
-    mostAsleepAt = fst $ determineMostAsleepAt minutesSleeping
-
-part2 nodOffs = winner
+part1 :: [(Int, [Int])] -> (Int, Int)
+part1 nodOffs = (guardId, findMostAsleepAt sleepMinutes)
   where
-    nodOffsByGuard = groupBy (\a b -> guard a == guard b) $ sortOn guard nodOffs
-    minutesByGuard = map (\list -> (guard $ head list, concatMap getMinutes list)) nodOffsByGuard
-    mostAsleepByGuard = map (\(g, l) -> (g, determineMostAsleepAt l)) minutesByGuard
-    winner = head $ reverse $ sortOn (snd . snd) mostAsleepByGuard
+    (guardId, sleepMinutes) = head $ sortDescendingOn mostAsleep nodOffs
+    mostAsleep = length . snd
+    findMostAsleepAt = head . head . sortMostAsleepAt
+
+part2 :: [(Int, [Int])] -> (Int, Int)
+part2 nodOffs = (guardId, head $ sleepMinutes)
+  where
+    (guardId, sleepMinutes) = head $ sortDescendingOn (length . snd) $ map determineMostSleepMinutes nodOffs
+    determineMostSleepMinutes (guard, sleep) = (guard, head $ sortMostAsleepAt sleep)
 
 solve = do
-  input <- map parseLine <$> sort <$> lines <$> readFile "input.txt"
+  input <- sort <$> lines <$> readFile "input.txt"
   let nodOffs = buildNodOffs input
   putStrLn "Part 1:"
-  let (mostAsleep, mostAsleepAt) = part1 nodOffs
-  putStrLn $ show $ (read $ (fst mostAsleep)) * mostAsleepAt
+  let (mostAsleep1, mostAsleepAt1) = part1 nodOffs
+  putStrLn $ show $ mostAsleep1 * mostAsleepAt1
 
   putStrLn "Part 2:"
-  let winner = part2 nodOffs
-  putStrLn $ show $ (read $ (fst winner)) * (fst $ snd $ winner)
+  let (mostAsleep2, mostAsleepAt2) = part2 nodOffs
+  putStrLn $ show $ mostAsleep2 * mostAsleepAt2
 
+{- Test stuff -}
 testLines = ["[1518-11-01 00:00] Guard #10 begins shift",
   "[1518-11-01 00:05] falls asleep",
   "[1518-11-01 00:25] wakes up",
@@ -79,4 +75,4 @@ testLines = ["[1518-11-01 00:00] Guard #10 begins shift",
   "[1518-11-05 00:45] falls asleep",
   "[1518-11-05 00:55] wakes up"]
 
-testNodOffs = buildNodOffs $ map parseLine $ testLines
+testNodOffs = buildNodOffs $ testLines
