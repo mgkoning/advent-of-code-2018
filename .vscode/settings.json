@@ -4,6 +4,5 @@
   "files.exclude": {
     "**/bin": true,
     "**/obj": true
-  },
-  "files.insertFinalNewline": true
+  }
 }
