@@ -1,53 +1,42 @@
-import Data.List (sortOn, sort, group)
-import Data.Map.Strict (Map, empty, insertLookupWithKey, toList)
-import Data.Maybe (fromJust)
+import Data.List (sortOn, sort, group, groupBy)
+import Data.Map.Strict (fromList, toList)
 
-type ClosestChronal = (Int, Int)
 type Coordinate = (Int, Int)
-type VoronoiMap = Map (Int, Int) ClosestChronal
 data ChronalCoordinate = ChronalCoordinate { chronalId :: Int, coordinate :: Coordinate } deriving (Show, Eq)
-
 
 toCoords :: [String] -> [ChronalCoordinate]
 toCoords lines = zipWith ChronalCoordinate [1..] $ map read $ map (\l -> "(" ++ l ++ ")") lines
 
-neighboursAt n (x, y) = [(x + x', y + y') | x' <- [-n..n], y' <- [-n..n], abs x' + abs y' == n]
+borders coords = let allCoordinates = map coordinate coords
+                     xs = map fst allCoordinates
+                     ys = map snd allCoordinates
+                 in (minimum xs, maximum ys, minimum ys, maximum xs)
 
-buildVoronoiMap :: [ChronalCoordinate] -> VoronoiMap
-buildVoronoiMap coords = buildMap sortedCoords empty
+distances coords point = map (manhattanDistance point) coords
+  where manhattanDistance (x, y) (ChronalCoordinate id (a, b)) = (id, (abs (x - a) + abs (y - b)))
+
+gridWithDistances coords = fromList $ zip gridCoords $ map (distances coords) gridCoords
   where 
-    (left, top, bottom, right) = let allCoordinates = map coordinate coords
-                                     xs = map fst allCoordinates
-                                     ys = map snd allCoordinates
-                                 in (minimum xs, maximum ys, minimum ys, maximum xs)
-    sortedCoords = sortOn coordinate coords
-    withinBounds (x, y) = x >= left && x <= right && y >= bottom && y <= top
-    buildMap :: [ChronalCoordinate] -> VoronoiMap -> VoronoiMap
-    buildMap [] m = m
-    buildMap (c:cs) map = buildMap cs (fillMap c map)
-    fillMap (ChronalCoordinate id coord) map = fillMap' 0 map
-      where
-        fillMap' n map =
-          let neighbours = filter withinBounds $ neighboursAt n coord
-              putInMap (m, c) neighbour =
-                let
-                  (prev, map) = insertLookupWithKey update neighbour (id, n) m
-                  update key newValue oldValue
-                    | snd oldValue == snd newValue = (-1, snd oldValue)
-                    | snd oldValue < snd newValue = oldValue
-                    | otherwise = newValue
-                in (map, c + if prev == Nothing || snd (fromJust prev) >= n then 1 else 0)
-              (newMap, inserted) = foldl putInMap (map, 0) neighbours
-          in if inserted > 0 then fillMap' (n+1) newMap else map
+    (left, top, bottom, right) = borders coords
+    gridCoords = [(x, y) | x <- [left..right], y <- [bottom..top]]
 
-part1 voronoiMap = length $ head $ reverse $ sortOn length $ group $ sort $ filter (>0) $ map fst $ map snd $ toList voronoiMap
+part1 coords = winner
+  where grid = toList $ gridWithDistances coords
+        distances = map snd $ grid
+        closestByPoint = filter ((==1) . length) $ map head $ map (groupBy (\x y -> snd x == snd y) . sortOn snd) $ distances
+        winner = length $ head $ reverse $ sortOn length $ group $ sort $ map (fst . head) $  closestByPoint
+
+part2 maxDist coords = totalPoints
+  where totalPoints = length $ filter ((<maxDist) . sum . (map snd . snd)) $ toList $ gridWithDistances coords
 
 solve = do
-  putStrLn "Part 1"
   coords <- toCoords <$> lines <$> readFile "input.txt"
-  let voronoiMap = buildVoronoiMap coords
-  let largestSurface = part1 voronoiMap
+  putStrLn "Part 1"
+  let largestSurface = part1 coords
   putStrLn $ show largestSurface
+  putStrLn "Part 2"
+  let targetRegion = part2 10000 coords
+  putStrLn $ show targetRegion
 
 testCoords = 
   ["1, 1",
