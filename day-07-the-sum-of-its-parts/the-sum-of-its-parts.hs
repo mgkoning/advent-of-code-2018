@@ -1,6 +1,6 @@
 import Data.Char (ord)
-import Data.List (sort, nub, (\\), delete)
-import Data.Map.Strict (fromList, keys, (!), elems)
+import Data.List (sort, nub, (\\), delete, intersect)
+import Data.Map.Strict (Map, fromList, keys, (!), elems)
 import qualified Data.Map.Strict as Map
 import Data.Maybe (isJust, fromJust)
 
@@ -35,6 +35,7 @@ totalTime baseTime steps = (criticalPath ! (head $ reverse order))
 
 timeNeeded baseTime steps workers = timeNeeded' (drop 1 order) [] (take 1 order) (initWorkersAvailable workers) [0..]
   where order = properOrder steps
+        prerequisiteMap = getPrerequisiteMap steps
         initWorkersAvailable n = fromList $ map initWorker $ take n [0..]
         initWorker n = (n, (0, Nothing))
         timeNeeded' [] _ [] _ (time:_) = time
@@ -44,13 +45,14 @@ timeNeeded baseTime steps workers = timeNeeded' (drop 1 order) [] (take 1 order)
               isDone (_, Nothing) = False
               isDone (t, Just a) = t <= time
               newDone = done ++ doneSteps
-              nowAvailable = sort ((findNowAvailable newDone remaining steps) ++ available)
+              nowAvailable = sort ((findNowAvailable newDone remaining prerequisiteMap) ++ available)
               newWorkers = foldl markIdle workers (keys doneWorkers)
               markIdle m k = Map.adjust (const (0, Nothing)) k m
           in if null nowAvailable then timeNeeded' remaining newDone nowAvailable newWorkers moreTime else 0
 
-findNowAvailable done remaining steps = map snd $ filter (isAvailable done) steps
-  where isAvailable done step = (fst step) `elem` done
+findNowAvailable :: [Char] -> [Char] -> Map Char [Char] -> [Char]
+findNowAvailable done remaining prerequisiteMap = intersect remaining $ keys $ Map.filter (isAvailable done) prerequisiteMap
+  where isAvailable done prereq = null (prereq \\ done)
 
 solve = do
   steps <- map parseStep <$> lines <$> readFile "input.txt"
