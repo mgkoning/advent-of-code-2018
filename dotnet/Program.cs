@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("AdventOfCode2018.UnitTests")]
+
 namespace AdventOfCode2018 {
   class Program {
     static IDictionary<int, Type> _runners = (
