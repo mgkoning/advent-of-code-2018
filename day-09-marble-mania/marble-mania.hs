@@ -1,37 +1,56 @@
 import Data.List (sortOn)
 import Data.Map.Strict (Map, empty, alter, toList)
 import Data.Maybe (fromMaybe)
-import Debug.Trace (trace)
 
 actualPlayers = 412
 actualLastMarble = 71646
 
-scoringMarbles n = scoringMarbles' [0, 1] 1 2 [] 2
+data Zipper a = Zipper [a] a [a] deriving (Show, Eq)
+
+move z 0 = z
+move (Zipper prefix focus suffix) n
+  | n < 0 && null prefix = let (p:ps) = reverse (focus:suffix) in move (Zipper ps p []) (n + 1)
+  | n < 0 = let (p:ps) = prefix in move (Zipper ps p (focus:suffix)) (n + 1)
+  | n > 0 && null suffix = let (s:ss) = reverse (focus:prefix) in move (Zipper [] s ss) (n - 1)
+  | otherwise = let (s:ss) = suffix in move (Zipper (focus:prefix) s ss) (n - 1)
+
+focusValue (Zipper _ a _) = a
+
+{- insert newbie to the right of the focus -}
+insertRight (Zipper prefix focus suffix) newbie = Zipper (focus:prefix) newbie suffix
+
+{- delete focus and shift focus to right -}
+deleteRight (Zipper prefix focus (s:suffix)) = Zipper prefix s suffix
+
+listify (Zipper p f s) = reverse (f:p) ++ s
+
+scoringMarbles n = scoringMarbles' (Zipper [] 0 []) [] 1
   where
-    scoringMarbles' list currentMarblePosition length winners step
-      | n < step = (reverse winners, list)
-      | step `rem` 23 == 0 = scoringMarbles' removedList removedPosition (length - 1) (prepend (step, step + removedMarble) winners) (step + 1)
-      | otherwise = trace ((show step) ++ "\t@\t" ++ (show nextPosition)) $ scoringMarbles' addedList nextPosition (length + 1) winners (step + 1)
-        where
-          nextPosition = (((currentMarblePosition + 1) `rem` length) + 1) `rem` (length + 1)
-          addedList = (take (nextPosition) list) ++ (step:(drop (nextPosition) list))
-          removedPosition = ((currentMarblePosition - 7) + length) `rem` length
-          (removedList, removedMarble) = let (prefix, suffix) = (splitAt (removedPosition) list) in (prefix ++ (tail suffix), head suffix)
+    scoringMarbles' zipper winners step
+      | n < step = (reverse winners, zipper)
+      | step `rem` 23 == 0 =
+          let movedZipper = move zipper (-7)
+              victim = focusValue movedZipper
+              score = step + victim
+          in score `seq` scoringMarbles' (deleteRight movedZipper) ((step, score):winners) (step + 1)
+      | otherwise = scoringMarbles' (insertRight (move zipper 1) step) winners (step + 1)
 
 scores players lastMarble = foldl foldScore empty scores
   where scores = fst $ scoringMarbles lastMarble
         foldScore scoreMap (pos, score) = alter (addScore [score]) (pos `rem` players) scoreMap
         addScore new old = Just $ (fromMaybe [] old) ++ new
 
-part1' players lastMarble = head $ reverse $ sortOn (sum . snd) $ toList $ scores players lastMarble
-
-prepend a list = a `seq` (a:list)
+highScore players lastMarble = head $ reverse $ sortOn (snd) $ map sumScores $ toList $ scores players lastMarble
+  where sumScores (p, scores) = (p, sum scores)
 
 solve = do
   putStrLn "Part 1:"
-  {- Abandoned: Not sure how a doubly linked list can be modeled in Haskell; default lists are too slow -}
-  --putStrLn $ show $ part1' actualPlayers actualLastMarble
+  let (_, highscore1) = highScore actualPlayers actualLastMarble
+  putStrLn $ show $ highscore1
+  putStrLn "Part 2:"
+  let (_, highscore2) = highScore actualPlayers (100*actualLastMarble)
+  putStrLn $ show $ highscore2
 
 
-testHighScores = map (sum . snd . (uncurry part1')) [(10, 1618), (13, 7999), (17,1104), (21,6111), (30, 5807)]
+testHighScores = map (snd . (uncurry highScore)) [(10, 1618), (13, 7999), (17,1104), (21,6111), (30, 5807)]
 
