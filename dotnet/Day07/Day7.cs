@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace AdventOfCode2018 {
+namespace AdventOfCode2018.Day07 {
   public class Day7 : IDay {
     private bool _showProgress = false;
     public string Banner => "Day 07: The Sum Of Its Parts";
