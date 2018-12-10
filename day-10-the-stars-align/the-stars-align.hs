@@ -4,6 +4,10 @@ import Data.List (groupBy, sortBy, sort, minimumBy)
 import Data.Function (on)
 import Data.Ord (comparing)
 
+{- Let's make these operators the proper symbol for once -}
+(∘) = (.)
+(×) = (*)
+
 -- position=< 53242, -42275> velocity=<-5,  4>
 readStar :: Int -> String -> ((Int, Int), (Int, Int))
 readStar posSize line = ((read xPos, read yPos), (read xVel, read yVel))
@@ -22,8 +26,8 @@ readTestStarChart input = map (readStar 2) $ lines input
 moveStars n starChart = map moveStar starChart
   where moveStar ((x,y), vel) =
           let (vx, vy) = vel
-              newPosX = x+(n*vx)
-              newPosY = y+(n*vy)
+              newPosX = x+(n × vx)
+              newPosY = y+(n × vy)
           in newPosX `seq` newPosY `seq` ((newPosX, newPosY), vel)
 
 starbox starState = (left, right, bottom, top) 
@@ -31,24 +35,23 @@ starbox starState = (left, right, bottom, top)
         positions = map fst starState
         (xs, ys) = unzip positions
 
-size (left, right, bottom, top) = (abs (right - left)) * (abs (top - bottom))
+size (left, right, bottom, top) = (abs (right - left)) × (abs (top - bottom))
 
 paintStars :: [((Int, Int), (Int, Int))] -> String
 paintStars starState = picture
   where (left, right, bottom, top) = starbox starState
         positions = map fst starState
-        canvas = fromList [((x, y), '.') | x <- [(left-1)..(right+1)], y <- [(bottom-1)..(top+1)]]
-        strokes = toList $ foldl (flip (adjust (const '#'))) canvas positions
-        byLines = groupBy ((==) `on` (snd . fst)) $ sortBy (comparing (snd . fst)) $ strokes
-        picture = unlines $ map ((map snd) . (sortBy (comparing (fst . fst)))) byLines
+        canvas = fromList [((x, y), '·') | x <- [(left-2)..(right+2)], y <- [(bottom-2)..(top+2)]]
+        strokes = toList $ foldl (flip (adjust (const '@'))) canvas positions
+        byLines = let yPos = snd ∘ fst in groupBy ((==) `on` yPos) $ sortBy (comparing yPos) $ strokes
+        picture = let xPos = fst ∘ fst in unlines $ map ((map snd) ∘ (sortBy (comparing xPos))) byLines
 
 solve = do
   putStrLn "Part 1:"
   starChart <- readStarChart <$> readFile "input.txt"
-  let smallest = fst $ minimumBy (comparing snd) $ zip [0..] $ map (size . starbox) $ take 1000 $ iterate (moveStars 1) $ moveStars 10000 starChart
+  let smallest = fst $ minimumBy (comparing snd) $ zip [0..] $ map (size ∘ starbox) $ take 1000 $ iterate (moveStars 1) $ moveStars 10000 starChart
   let target = 10000 + smallest
   let painting = (paintStars (moveStars target starChart))
-  --writeFile ("stars@" ++ (show target) ++ ".txt") (paintStars (moveStars target starChart))
   putStrLn $ painting
   putStrLn "Part 2:"
   putStrLn $ show target
