@@ -34,7 +34,8 @@ duplicatingFrom eq (a:b:rest) = if eq a b then a else duplicatingFrom eq (b:rest
 solve = do
   (initialState, notes) <- readInput <$> lines <$> readFile "input.txt"
   let iteratedEvolution = iterate (evolve notes) initialState
-  let sumAtEvolution x = sum $ head $ drop x $ iteratedEvolution
+  let sums = map sum iteratedEvolution
+  let sumAtEvolution x = head $ drop x $ sums
   putStrLn "Part 1:"
   putStrLn $ show $ sumAtEvolution 20
   putStrLn "Part 2:"
@@ -49,7 +50,6 @@ solve = do
     Find the first repeated sum difference and calculate sum
     after _50 BILLION_ using the index, the sum and the repeated difference.
   -}
-  let sums = map sum iteratedEvolution
   let differences = zipWith (-) (drop 1 sums) sums
   let (repeatingFrom, repeatingSum) = duplicatingFrom ((==) `on` snd) $ zip [0..] differences
   putStrLn $ show $ (sumAtEvolution repeatingFrom) + (repeatingSum * (50000000000 - repeatingFrom))
