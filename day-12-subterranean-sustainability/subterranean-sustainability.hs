@@ -15,7 +15,7 @@ makeInitialState :: [Char] -> Set Int
 makeInitialState = Set.fromAscList . map fst . filter (((==) '#') . snd) . zip [0..]
 
 evolve :: Map String Char -> Set Int -> Set Int
-evolve notes state = Set.fromList $ catMaybes $ map (grow notes state) [(Set.findMin state)-3..(Set.findMax state)+3]
+evolve notes state = Set.fromList $ catMaybes $ map (grow notes state) [(Set.findMin state)-2..(Set.findMax state)+2]
 
 grow :: Map String Char -> Set Int -> Int -> Maybe Int
 grow notes state x =
