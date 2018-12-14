@@ -8,11 +8,11 @@ namespace AdventOfCode2018.Day14 {
     public string Banner => "Day 14: Chocolate Charts";
     
     public Task Solve() {
-      var target = 652601;
+      var target = "652601";
       System.Console.WriteLine("Part 1:");
-      System.Console.WriteLine(Part1(target));
+      System.Console.WriteLine(Part1(int.Parse(target)));
       System.Console.WriteLine("Part 2:");
-      System.Console.WriteLine(Part2(target.ToString()));
+      System.Console.WriteLine(Part2(target));
       return Task.CompletedTask;
     }
 
@@ -35,7 +35,6 @@ namespace AdventOfCode2018.Day14 {
       var recipeList = IterateRecipes(list => list.Count >= minimumListSize);
       return string.Join("", recipeList.GetRange(target, 10));
     }
-
 
     internal static int Part2(string target) {
       var targetSequence = Enumerable.ToList(from c in target select c-'0');
