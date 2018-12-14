@@ -16,43 +16,44 @@ namespace AdventOfCode2018.Day14 {
       return Task.CompletedTask;
     }
 
-    private static List<int> IterateRecipes(Func<List<int>, bool> done) {
+    private static IEnumerable<int> IterateRecipes() {
       var recipeList = new List<int>() { 3, 7 };
+      int addToList(int value) {
+        recipeList.Add(value);
+        return value;
+      }
+
       var elves = new List<int>() { 0, 1 };
-      while (!done(recipeList)) {
+
+      foreach(var i in recipeList) {
+        yield return i;
+      }
+
+      while (true) {
         var combined = (from e in elves select recipeList[e]).Sum();
         if (combined > 9) {
-          recipeList.Add(1);
+          yield return addToList(1);
         }
-        recipeList.Add(combined % 10);
+        yield return addToList(combined % 10);
         elves = Enumerable.ToList(from e in elves select (e + recipeList[e] + 1) % recipeList.Count);
       }
-      return recipeList;
     }
 
-    internal static string Part1(int target) {
-      var minimumListSize = target + 10;
-      var recipeList = IterateRecipes(list => list.Count >= minimumListSize);
-      return string.Join("", recipeList.GetRange(target, 10));
-    }
+    internal static string Part1(int target) =>
+      string.Join("", IterateRecipes().Skip(target).Take(10));
 
     internal static int Part2(string target) {
       var targetSequence = Enumerable.ToList(from c in target select c-'0');
-      var recipeList = IterateRecipes(list => Contains(list, targetSequence));
-      int index = recipeList.Count - targetSequence.Count;
-      if (recipeList[index] == targetSequence[0]) {
-        return index;
+      var lastRecipes = new Queue<int>();
+      var read = 0;
+      foreach(var recipe in IterateRecipes()) {
+        read++;
+        lastRecipes.Enqueue(recipe);
+        if(lastRecipes.Count < targetSequence.Count) { continue; }
+        if(targetSequence.SequenceEqual(lastRecipes)) { return read - targetSequence.Count; }
+        lastRecipes.Dequeue();
       }
-      return index - 1;
-    }
-
-    private static bool Contains(List<int> list, List<int> targetSequence) {
-      if (list.Count < targetSequence.Count) { return false; }
-      var range = list.GetRange(list.Count - targetSequence.Count, targetSequence.Count);
-      if (range.SequenceEqual(targetSequence)) { return true; }
-      if (list.Count < targetSequence.Count + 1) { return false; }
-      range = list.GetRange(list.Count - targetSequence.Count - 1, targetSequence.Count);
-      return range.SequenceEqual(targetSequence);
+      return -1; // won't get here
     }
   }
 }
