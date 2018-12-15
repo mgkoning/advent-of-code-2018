@@ -88,7 +88,9 @@ takeDamage creature damage = creature { hp = (hp creature) - damage }
 
 dead creature = hp creature <= 0
 
-isAdjacent (x1, y1) (x2, y2) = (abs $ x1-x2) + (abs $ y1-y2) == 1
+isAdjacent (x1, y1) (x2, y2) = distanceTo (x1, y1) (x2, y2) == 1
+
+distanceTo (x1, y1) (x2, y2) = (abs $ x1-x2) + (abs $ y1-y2)
 
 tplus (x1, y1) (x2, y2) = let x' = x1 + x2; y' = y1 + y2 in x' `seq` y' `seq` (x', y')
 
@@ -100,19 +102,21 @@ emptyNeighbors (GameState gameMap creatures _) pos = result
   where result = filter (`Set.member` gameMap) (adjacentSquares pos) \\ map position creatures
 
 findShortestPaths state source target =
-      --trace ("Find path from " ++ (show source) ++ " to " ++ (show target)) $
-      shortestPaths' (zip (emptyNeighbors state source) (repeat [])) Set.empty []
+      trace ("Find path from " ++ (show source) ++ " to " ++ (show target)) $
+      shortestPaths' (zip (emptyNeighbors state source) (repeat [])) (Set.singleton source) []
   where shortestPaths' [] _ foundPaths = foundPaths
         shortestPaths' ((pos, pathTaken):ps) visited foundPaths
           | pos `Set.member` visited = shortestPaths' ps visited' foundPaths
-          | pos /= target && (null foundPaths || (length newPath) < firstPathLength) = shortestPaths' (ps ++ nextMoves) visited' foundPaths
+          | pos /= target && (null foundPaths || (length newPath) < firstPathLength) = shortestPaths' toVisit visited' foundPaths
           | pos == target && (null foundPaths || (length newPath) < firstPathLength) = shortestPaths' ps visited' [(reverse (newPath))]
           | pos == target && (length newPath) == firstPathLength = shortestPaths' ps visited' ((reverse (newPath)):foundPaths)
           | otherwise = shortestPaths' ps visited' foundPaths
               where newPath = pos:pathTaken
                     visited' = Set.insert pos visited
-                    nextMoves = (zip (emptyNeighbors state pos) (repeat (pos:pathTaken)))
+                    unvisitedNeighbors = filter (not . (`Set.member` visited')) (emptyNeighbors state pos)
+                    nextMoves = (zip unvisitedNeighbors (repeat (pos:pathTaken)))
                     firstPathLength = length $ head foundPaths
+                    toVisit = (ps ++ nextMoves)
 
 
 fightUntilDone state = head $ dropWhile (\s -> not $ done $ snd s) $ zip [0..] (iterate round state)
