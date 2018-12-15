@@ -66,7 +66,7 @@ determineMove state creature targets =
     else {- trace ((creatureName creature) ++ " moves to " ++ (show move)) -} move
   where currentPos = position creature
         targetInRange = not $ null $ inRange currentPos targets
-        targetLocations = concatMap ((emptyNeighbors state) . position) targets
+        targetLocations = sortOn (distanceTo currentPos) $ concatMap ((emptyNeighbors state) . position) targets
         possiblePaths = filter ((/=0) . length . snd) $ zip targetLocations $ map (findShortestPaths state currentPos) targetLocations
         shortestPaths = head $ groupBy ((==) `on` pathLength) $ sortOn pathLength possiblePaths
         pathLength (t, path) = length $ head path
@@ -102,18 +102,20 @@ emptyNeighbors (GameState gameMap creatures _) pos = result
   where result = filter (`Set.member` gameMap) (adjacentSquares pos) \\ map position creatures
 
 findShortestPaths state source target =
-      trace ("Find path from " ++ (show source) ++ " to " ++ (show target)) $
-      shortestPaths' (zip (emptyNeighbors state source) (repeat [])) (Set.singleton source) []
-  where shortestPaths' [] _ foundPaths = foundPaths
-        shortestPaths' ((pos, pathTaken):ps) visited foundPaths
-          | pos `Set.member` visited = shortestPaths' ps visited' foundPaths
-          | pos /= target && (null foundPaths || (length newPath) < firstPathLength) = shortestPaths' toVisit visited' foundPaths
-          | pos == target && (null foundPaths || (length newPath) < firstPathLength) = shortestPaths' ps visited' [(reverse (newPath))]
-          | pos == target && (length newPath) == firstPathLength = shortestPaths' ps visited' ((reverse (newPath)):foundPaths)
-          | otherwise = shortestPaths' ps visited' foundPaths
+      --trace ("Find path from " ++ (show source) ++ " to " ++ (show target)) $
+      shortestPaths' (zip (emptyNeighbors state source) (repeat [])) (Set.singleton source) (Set.singleton source) []
+  where shortestPaths' [] _ _ foundPaths = foundPaths
+        shortestPaths' ((pos, pathTaken):ps) visited queued foundPaths
+          | pos `Set.member` visited = shortestPaths' ps visited' queued foundPaths
+          | pos /= target && (null foundPaths || (length newPath) < firstPathLength) = shortestPaths' toVisit visited' queued' foundPaths
+          | pos == target && (null foundPaths || (length newPath) < firstPathLength) = shortestPaths' ps visited' queued [(reverse (newPath))]
+          | pos == target && (length newPath) == firstPathLength = shortestPaths' ps visited' queued ((reverse (newPath)):foundPaths)
+          | pos == target && (length newPath) > firstPathLength = foundPaths
+          | otherwise = shortestPaths' ps visited' queued foundPaths
               where newPath = pos:pathTaken
                     visited' = Set.insert pos visited
-                    unvisitedNeighbors = filter (not . (`Set.member` visited')) (emptyNeighbors state pos)
+                    queued' = foldr Set.insert queued unvisitedNeighbors
+                    unvisitedNeighbors = filter (not . (`Set.member` queued)) $ filter (not . (`Set.member` visited')) (emptyNeighbors state pos)
                     nextMoves = (zip unvisitedNeighbors (repeat (pos:pathTaken)))
                     firstPathLength = length $ head foundPaths
                     toVisit = (ps ++ nextMoves)
