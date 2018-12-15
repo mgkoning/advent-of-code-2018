@@ -30,10 +30,10 @@ expand state =
   let RecipeState elf1 elf2 recipes = state
       elf1Recipe = (recipes `index` elf1)
       elf2Recipe = (recipes `index` elf2)
-      recipes' = let (x, y) = (elf1Recipe + elf2Recipe) `divMod` 10 in if x > 0 then recipes |> x |> y else recipes |> y
-      elf1' = let e = (elf1 + 1 + elf1Recipe) `mod` (length recipes') in e `seq` e
-      elf2' = let e = (elf2 + 1 + elf2Recipe) `mod` (length recipes') in e `seq` e
-  in RecipeState elf1' elf2' recipes'
+      recipes' = let (x, y) = (elf1Recipe + elf2Recipe) `divMod` 10 in x `seq` y `seq` if x > 0 then recipes |> x |> y else recipes |> y
+      elf1' = (elf1 + 1 + elf1Recipe) `mod` (length recipes')
+      elf2' = (elf2 + 1 + elf2Recipe) `mod` (length recipes')
+  in elf1' `seq` elf2' `seq` RecipeState elf1' elf2' recipes'
 
 {- Pretty slow, as I feared, but it works! -}
 {- Stats from GHCi: (136.47 secs, 64,530,807,864 bytes) [ouch] -}
