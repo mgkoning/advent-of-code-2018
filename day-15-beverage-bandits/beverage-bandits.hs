@@ -7,6 +7,7 @@ import Data.List
 import Data.Function (on)
 import Data.Tuple (swap)
 import Data.Ord (comparing)
+import Data.Maybe (fromJust, isJust, listToMaybe)
 import Debug.Trace (trace, traceShowId)
 
 data Creature = Creature { creatureId :: Integer, faction :: Faction, hp :: Integer, position :: Position, ap :: Integer } deriving (Show)
@@ -45,7 +46,7 @@ toFaction c = case c of
 enumerated :: [a] -> [(Integer, a)]
 enumerated = zip [0..]
 
-round state = foldl' turn state sortedCreatures
+round state = let s' = foldl' turn state sortedCreatures in {- trace (showState s') $ -} s'
   where sortedCreatures = map creatureId $ sortOn (swap . position) (creatures state)
 
 turn state id = if null foundCreature then state else if null targets then state { done = True } else doAttack afterMove creature' targets
@@ -125,7 +126,8 @@ fightUntilDone state = head $ dropWhile (\s -> not $ done $ snd s) $ zip [0..] (
 
 part1 state = 
   let result = fightUntilDone state
-  in trace (show result) $ (fst result - 1) * (sum $ map hp $ creatures $ snd result)
+  in --trace (show result) $
+     (fst result - 1) * (sum $ map hp $ creatures $ snd result)
 
 part2 state =
   let state' = state { creatures = map (\c -> if faction c == Elf then c { ap = 29 } else c) (creatures state) }
@@ -175,4 +177,11 @@ testInput3 =
   "#######\n"
 
 
-
+showState (GameState gameMap creatures _) =
+  let (right, bottom) = (maximum xs, maximum ys)
+      xs = Set.map fst gameMap
+      ys = Set.map snd gameMap
+      makeLine y = [(makePos x y) | x <- [0..right+1]]
+      creatureAt pos = listToMaybe $ map (\c -> if faction c == Elf then 'E' else 'G') $ filter ((== pos) . position) creatures
+      makePos x y = let creature = creatureAt (x,y) in if isJust $ creature then fromJust creature else if (x,y) `Set.member` gameMap then ' ' else '+'
+  in unlines $ [line | y <- [0..bottom+1], let line = makeLine y]
