@@ -108,10 +108,10 @@ findShortestPaths state source target =
   where shortestPaths' [] _ _ foundPaths = foundPaths
         shortestPaths' ((pos, pathTaken):ps) visited queued foundPaths
           | pos `Set.member` visited = shortestPaths' ps visited' queued foundPaths
-          | pos /= target && (null foundPaths || (length newPath) < firstPathLength) = shortestPaths' toVisit visited' queued' foundPaths
-          | pos == target && (null foundPaths || (length newPath) < firstPathLength) = shortestPaths' ps visited' queued [(reverse (newPath))]
-          | pos == target && (length newPath) == firstPathLength = shortestPaths' ps visited' queued ((reverse (newPath)):foundPaths)
-          | pos == target && (length newPath) > firstPathLength = foundPaths
+          | pos /= target && null foundPaths = shortestPaths' toVisit visited' queued' foundPaths
+          | pos == target && null foundPaths = shortestPaths' ps visited' queued [(reverse (newPath))]
+          | (length newPath) > firstPathLength = foundPaths
+          | pos == target = shortestPaths' ps visited' queued ((reverse (newPath)):foundPaths)
           | otherwise = shortestPaths' ps visited' queued foundPaths
               where newPath = pos:pathTaken
                     visited' = Set.insert pos visited
