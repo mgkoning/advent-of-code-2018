@@ -6,7 +6,6 @@ import qualified Data.Set as Set
 import Data.List
 import Data.Function (on)
 import Data.Tuple (swap)
-import Data.Ord (comparing)
 import Data.Maybe (fromJust, isJust, listToMaybe)
 
 data Creature = Creature { creatureId :: Integer, faction :: Faction, hp :: Integer, position :: Position, ap :: Integer } deriving (Show)
@@ -48,8 +47,10 @@ enumerated = zip [0..]
 round state = let s' = foldl' turn state sortedCreatures in s'
   where sortedCreatures = map creatureId $ sortOn (swap . position) (creatures state)
 
-turn state id = if null foundCreature then state else if null targets then state { done = True } else doAttack afterMove creature' targets
-  where foundCreature = filter ((id==) . creatureId) (creatures state)
+turn state id = if null foundCreature then state {- This creature may have been eliminated before its turn -}
+                else if null targets then state { done = True }
+                else doAttack afterMove creature' targets
+  where foundCreature = filter ((id==) . creatureId) (creatures state) 
         creature = head foundCreature
         targets = findTargets state (faction creature)
         newPosition = determineMove state creature targets
@@ -60,8 +61,7 @@ replaceCreature cs c = c:(removeCreature cs c)
 
 removeCreature cs c = (filter ((/= (creatureId c)) . creatureId) cs)
 
-determineMove state creature targets =
-  if targetInRange || null shortestPaths then currentPos else move
+determineMove state creature targets = if targetInRange || null shortestPaths then currentPos else move
   where currentPos = position creature
         targetInRange = not $ null $ inRange currentPos targets
         targetLocations = sortOn (distanceTo currentPos) $ concatMap ((emptyNeighbors state) . position) targets
