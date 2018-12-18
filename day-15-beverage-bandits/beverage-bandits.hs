@@ -8,7 +8,6 @@ import Data.Function (on)
 import Data.Tuple (swap)
 import Data.Ord (comparing)
 import Data.Maybe (fromJust, isJust, listToMaybe)
-import Debug.Trace (trace, traceShowId)
 
 data Creature = Creature { creatureId :: Integer, faction :: Faction, hp :: Integer, position :: Position, ap :: Integer } deriving (Show)
 creatureName c = (show $ faction c) ++ " " ++ (show $ creatureId c)
@@ -46,7 +45,7 @@ toFaction c = case c of
 enumerated :: [a] -> [(Integer, a)]
 enumerated = zip [0..]
 
-round state = let s' = foldl' turn state sortedCreatures in {- trace (showState s') $ -} s'
+round state = let s' = foldl' turn state sortedCreatures in s'
   where sortedCreatures = map creatureId $ sortOn (swap . position) (creatures state)
 
 turn state id = if null foundCreature then state else if null targets then state { done = True } else doAttack afterMove creature' targets
@@ -62,28 +61,23 @@ replaceCreature cs c = c:(removeCreature cs c)
 removeCreature cs c = (filter ((/= (creatureId c)) . creatureId) cs)
 
 determineMove state creature targets =
-  if targetInRange || null possiblePaths
-    then {- trace ((creatureName creature) ++ " remains") -} currentPos
-    else {- trace ((creatureName creature) ++ " moves to " ++ (show move)) -} move
+  if targetInRange || null shortestPaths then currentPos else move
   where currentPos = position creature
         targetInRange = not $ null $ inRange currentPos targets
         targetLocations = sortOn (distanceTo currentPos) $ concatMap ((emptyNeighbors state) . position) targets
-        possiblePaths = filter ((/=0) . length . snd) $ zip targetLocations $ map (findShortestPaths state currentPos) targetLocations
-        shortestPaths = head $ groupBy ((==) `on` pathLength) $ sortOn pathLength possiblePaths
-        pathLength (t, path) = length $ head path
-        actualTarget = head $ sortOn (swap . fst) shortestPaths
-        move = head $ sortOn swap $ map head $ snd actualTarget
+        shortestPaths = findShortestPaths state currentPos (Set.fromList targetLocations)
+        actualTarget = head $ groupBy ((==) `on` fst) $ sortOn (swap . fst) shortestPaths
+        move = head $ sortOn swap $ map (head . snd) actualTarget
 
 inRange pos targets = filter ((isAdjacent pos) . position) targets
 
-doAttack state creature targets = if null targetsInRange then {- trace ((creatureName creature) ++ " does not attack") -} state else state'
+doAttack state creature targets = if null targetsInRange then state else state'
   where currentPos = position creature
         targetsInRange = inRange currentPos targets
         actualTarget = head $ sortOn (swap . position) $ head $ groupBy ((==) `on` hp) $ sortOn hp targetsInRange
         target' = takeDamage actualTarget (ap creature)
         creatures' = if dead target' then removeCreature (creatures state) target' else replaceCreature (creatures state) target'
-        state' = --trace ((creatureName creature) ++ " attacked " ++ (creatureName target') ++ ", hp now: " ++ (show $ hp target')) $
-          state { creatures = creatures' }
+        state' = state { creatures = creatures' }
 
 takeDamage creature damage = creature { hp = (hp creature) - damage }
 
@@ -95,23 +89,22 @@ distanceTo (x1, y1) (x2, y2) = (abs $ x1-x2) + (abs $ y1-y2)
 
 tplus (x1, y1) (x2, y2) = let x' = x1 + x2; y' = y1 + y2 in x' `seq` y' `seq` (x', y')
 
-adjacentSquares p = (tplus p) <$> [(0,-1), (-1,0), (1,0), (0,1)]
+adjacentSquares p = map (tplus p) [(0,-1), (-1,0), (1,0), (0,1)]
 
 findTargets (GameState _ creatures _) itsFaction = filter ((/=itsFaction) . faction) creatures
 
 emptyNeighbors (GameState gameMap creatures _) pos = result
   where result = filter (`Set.member` gameMap) (adjacentSquares pos) \\ map position creatures
 
-findShortestPaths state source target =
-      --trace ("Find path from " ++ (show source) ++ " to " ++ (show target)) $
+findShortestPaths state source targets =
       shortestPaths' (zip (emptyNeighbors state source) (repeat [])) (Set.singleton source) (Set.singleton source) []
   where shortestPaths' [] _ _ foundPaths = foundPaths
         shortestPaths' ((pos, pathTaken):ps) visited queued foundPaths
           | pos `Set.member` visited = shortestPaths' ps visited' queued foundPaths
-          | pos /= target && null foundPaths = shortestPaths' toVisit visited' queued' foundPaths
-          | pos == target && null foundPaths = shortestPaths' ps visited' queued [(reverse (newPath))]
+          | (not $ pos `Set.member` targets) && null foundPaths = shortestPaths' toVisit visited' queued' foundPaths
+          | pos `Set.member` targets && null foundPaths = shortestPaths' ps visited' queued [(pos, reverse (newPath))]
           | (length newPath) > firstPathLength = foundPaths
-          | pos == target = shortestPaths' ps visited' queued ((reverse (newPath)):foundPaths)
+          | pos `Set.member` targets = shortestPaths' ps visited' queued ((pos, reverse (newPath)):foundPaths)
           | otherwise = shortestPaths' ps visited' queued foundPaths
               where newPath = pos:pathTaken
                     visited' = Set.insert pos visited
@@ -124,27 +117,29 @@ findShortestPaths state source target =
 
 fightUntilDone state = head $ dropWhile (\s -> not $ done $ snd s) $ zip [0..] (iterate round state)
 
-part1 state = 
-  let result = fightUntilDone state
-  in --trace (show result) $
-     (fst result - 1) * (sum $ map hp $ creatures $ snd result)
+part1 state =  let result = fightUntilDone state in (fst result - 1) * (sum $ map hp $ creatures $ snd result)
 
-part2 state =
-  let state' = state { creatures = map (\c -> if faction c == Elf then c { ap = 29 } else c) (creatures state) }
+part2 state = snd $head $ dropWhile (not . fst) $ map (changeOdds state) [4..]
+
+changeOdds state elfPower = 
+  let elfs = filter isElf (creatures state)
+      isElf c = faction c == Elf
+      elfCount = length elfs
+      elfPowerUp c =  if isElf c then c { ap = elfPower } else c
+      state' = state { creatures = map elfPowerUp (creatures state) }
       (rounds, afterMath) = fightUntilDone state'
-  in trace (show (rounds, afterMath)) $ trace (show $ length $ creatures afterMath) $ (rounds - 1) * (sum $ map hp $ creatures $ afterMath)
+      remainingCreatures = creatures afterMath
+      score = (rounds - 1) * (sum $ map hp $ remainingCreatures)
+  in ((length $ filter isElf remainingCreatures) == elfCount, score)
 
-solveP1 = do
+solve = do
   state <- readInput <$> readFile "input.txt"
   putStrLn "Part 1:"
   let result = part1 state
   putStrLn $ show $ result
-
-solveP2 = do
-    state <- readInput <$> readFile "input.txt"
-    putStrLn "Part 2:"
-    let result = part2 state
-    putStrLn $ show $ result
+  putStrLn "Part 2:"
+  let result = part2 state
+  putStrLn $ show $ result
 
 
 testState = readInput testInput
