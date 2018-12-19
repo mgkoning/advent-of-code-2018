@@ -81,6 +81,16 @@ solve = do
   putStrLn "Part 1:"
   let part1 = runProgram state
   print $ (registry part1) ! 0
-  --putStrLn "Part 2:"
-  --let part2 = runProgram (state { registry = insert 0 1 (registry state)})
-  --print $ (registry part2) ! 0
+  {- Can't really make a general solution for all inputs, but:
+     The program in my input takes a certain number and sums all 
+     the factors that number has. Part 1 uses a prime and so the output
+     is the number + 1; part 2 uses a non-prime (in my case 10551277) and so
+     sadly the answer to part 2 is not the number + 1, but we can optimize 
+     the function to calculate the factors somewhat: we can skip 1 and n
+     (they're always factors, unless the number is 1) and only need to check
+     [2..(half n)].
+  -}
+  putStrLn "Part 2:"
+  print $ factorSum 10551277
+
+factorSum n = if n == 1 then 1 else 1 + n + (sum $ filter ((==0) . (mod n)) [2..(n `div` 2)])
