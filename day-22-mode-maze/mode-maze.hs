@@ -11,6 +11,10 @@ data Equipment = Torch | ClimbingGear | Neither deriving (Show, Eq, Ord)
 data Region = Region { erosionLevel :: Int, terrain :: Terrain } deriving (Show)
 data State = State { bestCase :: Int, timeTaken :: Int, position :: Position, equipped :: Equipment } deriving (Show, Eq, Ord)
 
+allowedEquipment Rocky = [Torch, ClimbingGear]
+allowedEquipment Wet = [ClimbingGear, Neither]
+allowedEquipment Narrow = [Torch, Neither]
+
 regionAt depth cave at@(x,y)
   | at `HashMap.member` cave = (cave ! at, cave)
   | x == 0 = let gi = 48271 * y; newRegion = makeRegion gi depth in (newRegion, HashMap.insert at newRegion cave)
@@ -40,7 +44,7 @@ distance (fromX, fromY) (toX, toY) = abs (fromX - toX) + abs (fromY - toY)
 
 isSolidRock (x, y) = x < 0 || y < 0
 
-neighbors depth maze at@(x,y) = foldl' addNeighbor ([], maze) reachableNeighbors
+neighbors depth maze at = foldl' addNeighbor ([], maze) reachableNeighbors
   where reachableNeighbors = filter (not . isSolidRock) $ [up, down, left, right] <*> [at]
         addNeighbor (ns, m) n = let (r, m') = regionAt depth m n in ((n, r):ns, m')
 
@@ -48,16 +52,12 @@ moves eq nextRegion = addTime eq $ allowedEquipment nextRegion
 
 addTime eq = map (\eq' -> (1 + if eq == eq' then 0 else 7, eq'))
 
-allowedEquipment Rocky = [Torch, ClimbingGear]
-allowedEquipment Wet = [ClimbingGear, Neither]
-allowedEquipment Narrow = [Torch, Neither]
-
 part2 maze depth target = bestPath maze (Set.singleton startState) (Set.empty)
   where startState = State (distance (0,0) target) 0 (0,0) Torch
         bestPath maze toVisit visited
           | Set.null toVisit = error "Couldn't find target"
           | otherwise =
-              let (next@(State _ time pos equipped), v) = Set.deleteFindMin toVisit
+              let ((State _ time pos equipped), v) = Set.deleteFindMin toVisit
                   (n, maze') = neighbors depth maze pos
                   possibleMoves = concatMap constructMove $ filter validWithCurrentEquipment $ n
                   validWithCurrentEquipment (_, Region _ t) = equipped `elem` (allowedEquipment t)
