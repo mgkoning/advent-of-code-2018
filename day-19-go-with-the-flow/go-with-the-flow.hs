@@ -3,7 +3,11 @@ import Data.Bits
 import Data.IntMap.Strict (IntMap, (!), insert, elems, fromList, lookup)
 import qualified Data.IntMap.Strict as IntMap
 import Data.Char (toUpper)
-import Debug.Trace (trace)
+import Text.Parsec (parse, getInput, setInput, (<|>), sepEndBy, many1, eof)
+import Text.Parsec.String (Parser)
+import Text.Parsec.Char (string, letter, spaces)
+import Control.Applicative (empty)
+import Numeric (readDec, readSigned)
 
 data State = State { registry :: Registry, program :: Program, instructionPointer :: Int, boundRegister :: Int } deriving (Show)
 
@@ -58,26 +62,16 @@ run r (Instruction opcode arg0 arg1 result) = storeIn r result $ computation
                         Eqri -> testRI (==)
                         Eqrr -> testRR (==)
 
-readInstruction line = Instruction opcode a b c
-  where (op:rest) = words line
-        (a:b:c:[]) = map read rest
-        opcode = read $ (toUpper $ head op):(drop 1 op)
-
-readProgram input = State emptyRegistry program 0 ip
-  where inputLines = lines input
-        ip = inputLines -: head -: drop 4 -: read
-        program = inputLines -: drop 1 -: map readInstruction -: enumerated -: fromList
-
 runProgram state = case next of Nothing -> state; Just i -> runProgram $ runIt i
   where State reg program ip boundRegister = state
         next = lookup ip program
-        runIt instruction = {- trace ((show nextIp) ++ ": " ++ (show reg')) $ -} state { instructionPointer = nextIp, registry = reg' }
+        runIt instruction = state { instructionPointer = nextIp, registry = reg' }
           where reg' = run (storeIn reg boundRegister ip) instruction
                 nextIp = (readFrom reg' boundRegister) + 1
         
 
 solve = do
-  state <- readProgram <$> readFile "input.txt"
+  state <- parseProgram <$> readFile "input.txt"
   putStrLn "Part 1:"
   let part1 = runProgram state
   print $ (registry part1) ! 0
@@ -94,3 +88,26 @@ solve = do
   print $ factorSum 10551277
 
 factorSum n = if n == 1 then 1 else 1 + n + (sum $ filter ((==0) . (mod n)) [2..(n `div` 2)])
+
+parseProgram :: String -> State
+parseProgram input = State emptyRegistry (program -: enumerated -: fromList) 0 ip
+  where (ip, program) = case (parse parseProgram' "" input) of
+                          Left msg -> error (show msg)
+                          Right r -> r
+        parseProgram' = (,) <$ string "#ip " <*> parseInt <* eol <*> parseInstruction `sepEndBy` eol <* eof
+
+parseInstruction :: Parser Instruction
+parseInstruction = Instruction <$> parseOp <*> parseInt <* spaces <*> parseInt <* spaces <*> parseInt
+
+parseOp :: Parser Opcode
+parseOp = mkOpcode <$> many1 letter
+  where mkOpcode op = (read $ (toUpper $ head op):(drop 1 op))
+
+eol :: Parser String
+eol = string "\r\n" <|> string "\n"
+
+parseInt :: Parser Int
+parseInt = do s <- getInput
+              case readSigned readDec s of
+                [(n, s')] -> n <$ setInput s'
+                _         -> empty
