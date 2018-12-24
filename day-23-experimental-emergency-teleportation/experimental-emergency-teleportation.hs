@@ -3,6 +3,10 @@ import Data.List (sortOn, subsequences, maximumBy)
 import Data.Ord (comparing)
 import Data.Tuple (swap)
 import qualified Data.Set as Set
+import Text.ParserCombinators.Parsec (Parser, sepBy, getInput, setInput, (<|>), sepEndBy, parse)
+import Text.ParserCombinators.Parsec.Char (char, string)
+import Numeric (readDec, readSigned)
+import Control.Applicative (empty)
 
 import Data.List (mapAccumL)
 import qualified Data.IntSet as S
@@ -13,15 +17,6 @@ newtype Vector3 = Vector3 (Int, Int, Int) deriving (Show, Eq, Ord)
 origin = Vector3 (0, 0, 0)
 
 data Nanobot = Nanobot { id :: Int, pos :: Vector3, radius :: Int} deriving (Show, Eq, Ord)
-
-readNanobot (id, l) =
-  let (_, a) = break (=='<') l
-      (b, c) = break (=='>') a
-      pos = read $ "(" ++ (drop 1 b) ++ ")"
-      r = read $ drop 5 c
-  in Nanobot id (Vector3 pos) r
-
-readNanobots input = map readNanobot $ zip [0..] $ lines input
 
 inRangeCount nanobots = length $ filter (inRange baddestBot) nanobots
   where baddestBot = head $ reverse $ sortOn radius nanobots
@@ -48,13 +43,35 @@ part2 nanobots = minDistance possibleAnswer
         minDistance n@(Nanobot _ v r) = distance v origin - r
 
 solve = do
-  nanobots <- readNanobots <$> readFile "input.txt"
+  nanobots <- parseNanobots <$> readFile "input.txt"
   putStrLn "Part 1:"
   print $ inRangeCount nanobots
   putStrLn "Part 2:"
   print $ part2 nanobots
 
-testNanobots@(n1:n2:n3:n4:n5:n6:[]) = readNanobots $ unlines [
+parseNanobots input = zipWith toNanobot [0..] posRadius
+  where toNanobot id (pos, radius) = Nanobot id pos radius
+        posRadius = case parse (parsePosRadius `sepEndBy` eol) "" input of
+                            Left msg -> error (show msg)
+                            Right parsed -> parsed
+
+eol :: Parser String
+eol = string "\r\n" <|> string "\n"
+
+parsePosRadius :: Parser (Vector3, Int)
+parsePosRadius = (,) <$ string "pos=<" <*> parseVector3 <* string ">, r=" <*> parseInt
+
+parseVector3 :: Parser Vector3
+parseVector3 = mkVector3 <$> parseInt `sepBy` (char ',')
+  where mkVector3 (a:b:c:[]) = Vector3 (a,b,c)
+
+parseInt :: Parser Int
+parseInt = do s <- getInput
+              case readSigned readDec s of
+                [(n, s')] -> n <$ setInput s'
+                _         -> empty
+
+testNanobots@(n1:n2:n3:n4:n5:n6:[]) = parseNanobots $ unlines [
   "pos=<10,12,12>, r=2",
   "pos=<12,14,12>, r=2",
   "pos=<16,12,12>, r=4",
