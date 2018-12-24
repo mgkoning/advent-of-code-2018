@@ -2,19 +2,14 @@ import Data.Set (fromList, toList, empty, member, union, unions, insert, delete,
 import qualified Data.Set as Set
 import Data.Maybe (catMaybes)
 import Data.List (foldl')
+import CommonHs.Parsing
+{- Run GHC(i) with -i ..\CommonHs\Parsing.hs to include this module -}
+
+import Text.Parsec (parse, (<|>), sepEndBy, eof)
+import Text.Parsec.String (Parser)
+import Text.Parsec.Char (string, letter, char)
 
 data Obstruction = Clay | Flooded deriving (Show, Eq)
-
-lineToClayCoordinates line = clayCoordinates
-  where (lineAt, rest) = span (/=',') line
-        xOrY = head lineAt
-        xOrYCoord = read $ drop 2 lineAt :: Int
-        lineFromTo = drop 4 rest
-        (lineFrom, a) = span (/='.') lineFromTo
-        lineTo = dropWhile (=='.') a
-        clayCoordinates = (if xOrY == 'y' then flip zip else zip) (repeat xOrYCoord) [(read lineFrom)..(read lineTo)]
-
-inputToClayCoordinates input = fromList $ concatMap lineToClayCoordinates $ lines input
 
 up    (x, y) = (x,   y-1)
 down  (x, y) = (x,   y+1)
@@ -63,7 +58,7 @@ trickleDown bottom from clay flooded = trickleDown' from []
 wetAndFloodedTiles minY flooded wet = size $ Set.filter (\(_, y) -> y >= minY) $ flooded `union` wet
 
 solve = do
-  clay <- inputToClayCoordinates <$> readFile "input.txt"
+  clay <- parseInput <$> readFile "input.txt"
   let minY = minimum $ Set.map snd clay
   putStrLn "Part 1:"
   let (wet, flooded) = springEternal clay
@@ -74,7 +69,7 @@ solve = do
   putStrLn $ show $ size flooded
 
 testPart1 =
-  let clay = inputToClayCoordinates testInput
+  let clay = parseInput testInput
       minY = minimum $ Set.map snd clay
       (w, f) = springEternal clay
       answer = wetAndFloodedTiles minY w f
@@ -90,12 +85,21 @@ testInput = unlines [
   "x=504, y=10..13",
   "y=13, x=498..504"]
 
+parseInput :: String -> Set.Set (Int, Int)
+parseInput input = case parse (parseClay `sepEndBy` eol <* eof) "" input of
+                      Left msg -> error (show msg)
+                      Right r -> fromList $ concat r
+
+parseClay :: Parser [(Int, Int)]
+parseClay = mkClayCoordinates <$> letter <* char '=' <*> parseInt <* string ", " <* letter <* char '=' <*> parseInt <* string ".." <*> parseInt
+  where mkClayCoordinates xOrY xOrYCoord from to = (if xOrY == 'y' then flip zip else zip) (repeat xOrYCoord) [from..to]
+
 printInputMap = do
-  coords <- inputToClayCoordinates <$> readFile "input.txt"
+  coords <- parseInput <$> readFile "input.txt"
   putStrLn $ showMap coords empty empty
 
 printTestInputMap = do
-  let coords = inputToClayCoordinates testInput
+  let coords = parseInput testInput
   putStrLn $ showMap coords empty empty
 
 {- This was a life saver, also fun to see -}
